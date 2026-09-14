@@ -44,9 +44,21 @@ function formulaCard(x){return `<article class="card"><div class="swatch" style=
 function render(){let arr=mode==='colors'?colors():db.filter(matches);if(mode==='formulas'&&$('sort').value==='product')arr.sort((a,b)=>String(a.product).localeCompare(String(b.product)));else if(mode==='formulas')arr.sort((a,b)=>String(a.code).localeCompare(String(b.code),undefined,{numeric:true}));let totalColors=new Set(db.map(x=>x.standard+'|'+norm(x.code))).size,ral=new Set(db.filter(x=>x.standard==='RAL').map(x=>norm(x.code))).size,ncs=new Set(db.filter(x=>x.standard==='NCS').map(x=>norm(x.code))).size;$('stats').innerHTML=`<div class="stat"><b>${totalColors.toLocaleString('ar-DZ')}</b><span>لون/كود فريد</span></div><div class="stat"><b>${ral.toLocaleString('ar-DZ')}</b><span>RAL</span></div><div class="stat"><b>${ncs.toLocaleString('ar-DZ')}</b><span>NCS</span></div><div class="stat"><b>${db.length.toLocaleString('ar-DZ')}</b><span>تركيبة</span></div>`;$('count').textContent=mode==='colors'?`${arr.length.toLocaleString('ar-DZ')} لون`:`${arr.length.toLocaleString('ar-DZ')} تركيبة`;let shown=arr.slice(0,page*pageSize);$('results').innerHTML=shown.length?shown.map((x,i)=>mode==='colors'?card(x,i):formulaCard(x)).join(''):'<div class="empty">لا توجد نتائج مطابقة.</div>';if(shown.length<arr.length)$('results').insertAdjacentHTML('beforeend',`<button class="loadmore" id="more">عرض المزيد (${Math.min(pageSize,arr.length-shown.length)})</button>`);$('more')?.addEventListener('click',()=>{page++;render()})}
 let currentFormula=null,currentKg=5,currentRefKg=1;
 function getScaledFormula(x,kg){
- const refKg=Number(currentRefKg)>0?Number(currentRefKg):1; const factor=kg/refKg;
- return (x.colorants||[]).slice(0,5).map((v,i)=>v>0?{name:x.pigments?.[i]||'ملون '+(i+1),qty:+v*factor}:null).filter(Boolean);
-}
+     const names={
+       "72":"TS A2-O","73":"A3-R","74":"A4 P","75":"A6-V",
+         "76":"A6-GO","77":"B1-Y","78":"B2-YO","79":"B4-RO",
+           "80":"B4-B","81":"B5-G","82":"B7-WO","83":"B8-SO",
+             "84":"C1-BO","85":"C3-YO","86":"E2-R"
+              };
+               const refKg=Number(currentRefKg)>0?Number(currentRefKg):1;
+                const factor=kg/refKg;
+                 return (x.colorants||[]).slice(0,5)
+                   .map((v,i)=>v>0?{
+                      name:names[String(x.pigments?.[i])]||x.pigments?.[i]||'ملون '+(i+1),
+                         qty:+v*factor
+                           }:null)
+                             .filter(Boolean);
+                             }
 function wallPreview(code,std){const c=colorPreview(code,std);return `<div class="wallPreview" style="--wall:${c}"><div class="wallFrame"></div><div class="wallSofa"></div><div class="wallFloor"></div><div class="wallLabel">معاينة اللون على حائط واقعي • ${esc(code)}</div></div>`}
 function calcHTML(x){currentFormula=x;return `<div class="calcBox"><b>🧮 حاسبة كمية الخلطة</b><div class="muted" style="margin-top:4px">اختر الوزن النهائي وحدد وزن المرجع الموجود في الوصفة.</div><div class="refRow"><label for="refKg">مرجع الوصفة (كغ)</label><input id="refKg" type="number" min="0.001" step="0.001" value="${currentRefKg}" oninput="setRefKg(this.value)"></div><div class="kgBtns"><button class="${currentKg===5?'active':''}" onclick="setKg(5)">5 كلغ</button><button class="${currentKg===10?'active':''}" onclick="setKg(10)">10 كلغ</button><button class="${currentKg===18?'active':''}" onclick="setKg(18)">18 كلغ</button></div><div id="calcRows">${calcRows(x,currentKg)}</div><div class="weightNote">الحساب تناسبي: الجرعات المسجلة بالمليلتر تُضرب في (الوزن المطلوب ÷ وزن المرجع). تم ضبط المرجع افتراضيًا على 1 كغ لأن ملف البيانات لا يصرّح صراحةً بوزن مرجعي. لا تعتمد النتيجة للإنتاج قبل مطابقة المرجع مع بطاقة/معيار المصنع.</div></div>`}
 function calcRows(x,kg){let base=(Number(x.baseQty)||0)*(kg/(Number(currentRefKg)>0?Number(currentRefKg):1));let rows=getScaledFormula(x,kg).map(a=>`<div class="calcRow"><b>ملون ${esc(a.name)}</b><span class="qty">${a.qty.toFixed(3)} mL</span></div>`).join('');let total=base+getScaledFormula(x,kg).reduce((s,a)=>s+a.qty,0);return `<div class="calcRow"><b>القاعدة</b><span class="qty">${base.toFixed(3)} mL</span></div>`+(rows||'<div class="muted">لا توجد ملونات لهذه التركيبة.</div>')+`<div class="calcRow"><b>إجمالي القاعدة + الملونات</b><span class="qty">${total.toFixed(3)} mL</span></div>`}
